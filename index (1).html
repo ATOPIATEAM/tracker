@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Daily Tracker</title>
+<style>
+:root{--bg:#f3f5f0;--surface:#fff;--ink:#1d2a24;--mute:#6b7a72;--line:#dde3dc;--accent:#2f6b4f;--accent-ink:#fff;--warn:#b4472f;--today:#e4efe7;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a17;--surface:#1d2622;--ink:#e8efe9;--mute:#93a39a;--line:#2c3832;--accent:#6fbf96;--accent-ink:#0f1a14;--warn:#e2806a;--today:#24352c}}
+:root[data-theme="dark"]{--bg:#141a17;--surface:#1d2622;--ink:#e8efe9;--mute:#93a39a;--line:#2c3832;--accent:#6fbf96;--accent-ink:#0f1a14;--warn:#e2806a;--today:#24352c}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Fraunces",Georgia,serif;-webkit-tap-highlight-color:transparent}
+button,input,textarea{font:inherit;color:inherit}
+.app{max-width:520px;margin:0 auto;padding:16px 14px 40px}
+.tabs{display:flex;gap:6px;background:var(--line);padding:4px;border-radius:12px;margin-bottom:16px}
+.tabs button{flex:1;border:0;background:none;padding:10px;border-radius:9px;font-weight:600;cursor:pointer;color:var(--mute)}
+.tabs button.on{background:var(--surface);color:var(--ink)}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.nav h1{font-size:22px;margin:0;font-weight:700}
+.nav button{border:1px solid var(--line);background:var(--surface);width:42px;height:42px;border-radius:50%;font-size:18px;cursor:pointer}
+.dow,.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow span{text-align:center;font-size:12px;color:var(--mute);padding:4px 0}
+.day{aspect-ratio:1/1.1;border:1px solid var(--line);background:var(--surface);border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:7px;font-size:15px;cursor:pointer;position:relative}
+.day.blank{border:0;background:none;cursor:default}
+.day.today{background:var(--today);border-color:var(--accent);font-weight:700}
+.dots{display:flex;gap:3px;margin-top:5px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--accent)}
+.dot.x{background:var(--warn)}
+.legend{font-size:13px;color:var(--mute);margin-top:12px;display:flex;gap:14px}
+.legend i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);margin-right:5px}
+.legend i.x{background:var(--warn)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:14px}
+.total{font-size:30px;font-weight:700;margin:2px 0 0}
+.sub{color:var(--mute);font-size:13px}
+.row{display:flex;gap:8px;margin-top:8px}
+input,textarea{width:100%;border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:11px}
+input:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.primary{width:100%;margin-top:10px;border:0;background:var(--accent);color:var(--accent-ink);padding:12px;border-radius:10px;font-weight:700;cursor:pointer}
+.item{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.item:first-child{border-top:0}
+.item .amt{font-weight:700;white-space:nowrap}
+.del{border:0;background:none;color:var(--warn);cursor:pointer;font-size:18px;padding:4px 8px}
+.gh{font-size:13px;color:var(--mute);margin:14px 2px 4px}
+.empty{color:var(--mute);text-align:center;padding:18px 0;font-size:14px}
+.sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:flex-end;justify-content:center;z-index:10}
+.sheet-bg.open{display:flex}
+.sheet{background:var(--surface);width:100%;max-width:520px;border-radius:20px 20px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));max-height:85%;overflow:auto;animation:up .2s ease-out}
+@keyframes up{from{transform:translateY(40px);opacity:.6}to{transform:none;opacity:1}}
+.sheet h2{margin:0 0 10px;font-size:20px;display:flex;justify-content:space-between;align-items:center}
+.sheet h2 button{border:0;background:var(--line);width:34px;height:34px;border-radius:50%;cursor:pointer}
+textarea{min-height:150px;resize:vertical;line-height:1.5}
+#bg .sheet{max-width:min(1100px,96vw);height:95vh;height:95dvh;max-height:none;display:flex;flex-direction:column;overflow:hidden}
+#bg textarea{flex:1;min-height:0;resize:none;font-size:16px}
+#s-exp{flex:none;max-height:25%;overflow:auto}
+.hidden{display:none}
+.bar{display:flex;justify-content:space-between;align-items:center;margin:-6px 2px 12px;gap:10px}.bar button{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="tabs"><button id="t-cal" class="on">Calendar</button><button id="t-exp">Expenses</button></div>
+  <div class="bar"><span id="status" class="sub"></span><button id="gear">Sync settings</button></div>
+  <div class="nav"><button id="prev" aria-label="Previous month">‹</button><h1 id="title"></h1><button id="next" aria-label="Next month">›</button></div>
+
+  <section id="v-cal">
+    <div class="dow"><span>Sun</span><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span></div>
+    <div class="grid" id="grid"></div>
+    <div class="legend"><span><i></i>Activities</span><span><i class="x"></i>Expenses</span></div>
+  </section>
+
+  <section id="v-exp" class="hidden">
+    <div class="card"><div class="sub">Spent this month</div><div class="total" id="total"></div></div>
+    <div class="card">
+      <div class="row"><input id="e-amt" type="number" inputmode="decimal" placeholder="Amount (Br)"><input id="e-date" type="date"></div>
+      <div class="row"><input id="e-note" type="text" placeholder="What was it for?"></div>
+      <button class="primary" id="e-add">Add expense</button>
+    </div>
+    <div id="list"></div>
+  </section>
+</div>
+
+<div class="sheet-bg" id="bg">
+  <div class="sheet" role="dialog" aria-modal="true">
+    <h2><span id="s-title"></span><button id="s-close" aria-label="Close">✕</button></h2>
+    <textarea id="s-text" placeholder="What did you do today?"></textarea>
+    <div id="s-exp"></div>
+  </div>
+</div>
+
+<div class="sheet-bg" id="bg2"><div class="sheet" role="dialog" aria-modal="true">
+<h2><span>GitHub sync</span><button id="g-close" aria-label="Close">✕</button></h2>
+<div class="sub">Use a private data repo, e.g. yourname/tracker-data</div>
+<div class="row"><input id="g-repo" type="text" placeholder="username/tracker-data" autocapitalize="off" autocomplete="off"></div>
+<div class="row"><input id="g-token" type="password" placeholder="Fine-grained access token" autocomplete="off"></div>
+<button class="primary" id="g-save">Save and sync</button>
+<button class="primary" id="g-off" style="background:var(--line);color:var(--ink)">Disconnect</button>
+</div></div>
+
+<script>
+const $=s=>document.querySelector(s);
+const KEY='daily-tracker-v1';
+let data={notes:{},nu:{},expenses:[],del:{}};
+try{const r=localStorage.getItem(KEY);if(r)data=Object.assign(data,JSON.parse(r))}catch(e){}
+function save(){try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}scheduleSync()}
+const pad=n=>String(n).padStart(2,'0');
+const key=(y,m,d)=>y+'-'+pad(m+1)+'-'+pad(d);
+const now=new Date();
+const todayKey=key(now.getFullYear(),now.getMonth(),now.getDate());
+let view=new Date(now.getFullYear(),now.getMonth(),1);
+let sel=null,tab='cal';
+const fmt=n=>'Br '+Number(n).toLocaleString(undefined,{maximumFractionDigits:2});
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const dayExp=k=>data.expenses.filter(e=>e.date===k);
+
+function renderCal(){
+  const y=view.getFullYear(),m=view.getMonth();
+  $('#title').textContent=view.toLocaleString(undefined,{month:'long',year:'numeric'});
+  const first=new Date(y,m,1).getDay(),n=new Date(y,m+1,0).getDate();
+  let h='';
+  for(let i=0;i<first;i++)h+='<div class="day blank"></div>';
+  for(let d=1;d<=n;d++){
+    const k=key(y,m,d);
+    const note=data.notes[k],ex=dayExp(k).length;
+    h+='<button class="day'+(k===todayKey?' today':'')+'" data-k="'+k+'">'+d+
+      '<span class="dots">'+(note?'<span class="dot"></span>':'')+(ex?'<span class="dot x"></span>':'')+'</span></button>';
+  }
+  $('#grid').innerHTML=h;
+}
+
+function renderExp(){
+  const y=view.getFullYear(),m=view.getMonth();
+  const pre=y+'-'+pad(m+1);
+  const items=data.expenses.filter(e=>e.date.startsWith(pre)).sort((a,b)=>b.date.localeCompare(a.date)||b.id-a.id);
+  $('#total').textContent=fmt(items.reduce((s,e)=>s+e.amt,0));
+  if(!items.length){$('#list').innerHTML='<div class="empty">No expenses this month. Add one above.</div>';return}
+  let h='',last='';
+  items.forEach(e=>{
+    if(e.date!==last){last=e.date;
+      const dt=new Date(e.date+'T00:00:00');
+      h+='<div class="gh">'+dt.toLocaleDateString(undefined,{weekday:'short',month:'short',day:'numeric'})+'</div>'}
+    h+='<div class="card" style="padding:0 14px;margin-bottom:6px"><div class="item"><span>'+esc(e.note||'Expense')+'</span><span><span class="amt">'+fmt(e.amt)+'</span><button class="del" data-id="'+e.id+'" aria-label="Delete">✕</button></span></div></div>';
+  });
+  $('#list').innerHTML=h;
+}
+
+function render(){tab==='cal'?renderCal():renderExp();
+  $('#v-cal').classList.toggle('hidden',tab!=='cal');
+  $('#v-exp').classList.toggle('hidden',tab!=='exp');
+  $('#t-cal').classList.toggle('on',tab==='cal');
+  $('#t-exp').classList.toggle('on',tab==='exp');
+  if(tab==='exp')$('#title').textContent=view.toLocaleString(undefined,{month:'long',year:'numeric'});
+}
+
+function openDay(k){
+  sel=k;
+  const dt=new Date(k+'T00:00:00');
+  $('#s-title').textContent=dt.toLocaleDateString(undefined,{weekday:'long',month:'long',day:'numeric'});
+  $('#s-text').value=data.notes[k]||'';
+  const ex=dayExp(k);
+  $('#s-exp').innerHTML=ex.length?'<div class="gh">Spent today: '+fmt(ex.reduce((s,e)=>s+e.amt,0))+'</div>'+ex.map(e=>'<div class="item"><span>'+esc(e.note||'Expense')+'</span><span class="amt">'+fmt(e.amt)+'</span></div>').join(''):'';
+  $('#bg').classList.add('open');
+  setTimeout(()=>$('#s-text').focus(),50);
+}
+function closeDay(){$('#bg').classList.remove('open');sel=null;render()}
+
+$('#grid').addEventListener('click',e=>{const b=e.target.closest('.day[data-k]');if(b)openDay(b.dataset.k)});
+$('#s-text').addEventListener('input',e=>{
+  const v=e.target.value;
+  if(v.trim())data.notes[sel]=v;else delete data.notes[sel];
+  data.nu[sel]=Date.now();save();
+});
+$('#s-close').onclick=closeDay;
+$('#bg').addEventListener('click',e=>{if(e.target.id==='bg')closeDay()});
+$('#prev').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()-1,1);render()};
+$('#next').onclick=()=>{view=new Date(view.getFullYear(),view.getMonth()+1,1);render()};
+$('#t-cal').onclick=()=>{tab='cal';render()};
+$('#t-exp').onclick=()=>{tab='exp';render()};
+$('#e-date').value=todayKey;
+$('#e-add').onclick=()=>{
+  const amt=parseFloat($('#e-amt').value),date=$('#e-date').value||todayKey;
+  if(!(amt>0)){$('#e-amt').focus();return}
+  data.expenses.push({id:Date.now(),date,amt,note:$('#e-note').value.trim()});
+  save();$('#e-amt').value='';$('#e-note').value='';
+  const d=new Date(date+'T00:00:00');view=new Date(d.getFullYear(),d.getMonth(),1);
+  render();
+};
+$('#list').addEventListener('click',e=>{
+  const b=e.target.closest('.del');if(!b)return;
+  const id=+b.dataset.id;data.expenses=data.expenses.filter(x=>x.id!==id);data.del[id]=Date.now();save();render();
+});
+const CK='daily-tracker-gh';
+let cfg={};try{cfg=JSON.parse(localStorage.getItem(CK)||'{}')}catch(e){}
+const b64e=s=>btoa(unescape(encodeURIComponent(s)));
+const b64d=s=>decodeURIComponent(escape(atob(s.replace(/\s/g,''))));
+const setStatus=t=>{$('#status').textContent=t};
+function merge(a,b){
+  const o={notes:{},nu:{},expenses:[],del:Object.assign({},a.del||{},b.del||{})};
+  const ks=new Set([...Object.keys(a.nu||{}),...Object.keys(b.nu||{}),...Object.keys(a.notes||{}),...Object.keys(b.notes||{})]);
+  [...ks].sort().forEach(k=>{
+    const ua=(a.nu||{})[k]||0,ub=(b.nu||{})[k]||0,src=ua>=ub?a:b;
+    o.nu[k]=Math.max(ua,ub);
+    if(src.notes&&src.notes[k])o.notes[k]=src.notes[k];
+  });
+  const seen={};
+  [...(a.expenses||[]),...(b.expenses||[])].forEach(e=>{if(!o.del[e.id]&&!seen[e.id]){seen[e.id]=1;o.expenses.push(e)}});
+  o.expenses.sort((x,y)=>x.id-y.id);
+  return o;
+}
+let busy=false,timer;
+function scheduleSync(){clearTimeout(timer);if(cfg.token&&cfg.repo)timer=setTimeout(()=>sync(),1500)}
+async function sync(retry){
+  if(!cfg.token||!cfg.repo){setStatus('Saved on this device only');return}
+  if(busy){scheduleSync();return}
+  busy=true;setStatus('Syncing…');
+  const url='https://api.github.com/repos/'+cfg.repo+'/contents/data.json';
+  const h={Authorization:'Bearer '+cfg.token,Accept:'application/vnd.github+json'};
+  try{
+    let sha,remote={};
+    const r=await fetch(url,{headers:h,cache:'no-store'});
+    if(r.status===200){const j=await r.json();sha=j.sha;remote=JSON.parse(b64d(j.content))}
+    else if(r.status!==404)throw new Error(r.status);
+    const m=merge(data,remote);
+    const dirty=r.status===404||JSON.stringify(m)!==JSON.stringify(remote);
+    data=m;save0();
+    if(dirty){
+      const p=await fetch(url,{method:'PUT',headers:h,body:JSON.stringify({message:'Update tracker data',content:b64e(JSON.stringify(m)),sha})});
+      if(p.status===409&&!retry){busy=false;return sync(true)}
+      if(!p.ok)throw new Error(p.status);
+    }
+    setStatus('Synced '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));
+    render();
+  }catch(e){setStatus('Sync failed ('+e.message+'). Saved on this device.')}
+  busy=false;
+}
+function save0(){try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}}
+$('#gear').onclick=()=>{$('#g-repo').value=cfg.repo||'';$('#g-token').value=cfg.token||'';$('#bg2').classList.add('open')};
+$('#g-close').onclick=()=>$('#bg2').classList.remove('open');
+$('#g-save').onclick=()=>{cfg={repo:$('#g-repo').value.trim(),token:$('#g-token').value.trim()};try{localStorage.setItem(CK,JSON.stringify(cfg))}catch(e){}$('#bg2').classList.remove('open');sync()};
+$('#g-off').onclick=()=>{cfg={};try{localStorage.removeItem(CK)}catch(e){}$('#bg2').classList.remove('open');setStatus('Saved on this device only')};
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
+render();sync();
+</script>
+</body>
+</html>
